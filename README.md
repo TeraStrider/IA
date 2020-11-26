@@ -73,7 +73,14 @@ Bine ca de data asta putem sa alegem singuri cum reprezentam datele...
 
 
 ### Laborator 6 - Rezolutie in logica cu predicate de ordinul I
-Se utilizeaza rezolutia pentru a demonstra propozitii
+Se utilizeaza rezolutia pentru a demonstra propozitii.
+
+
+### Laborator 7 - Forward Chaining
+Se demonstreaza o serie de teoreme (implicatii) folosind forward chaining.
+Teoremele sunt formulate in FNC si se folosesc functiile implementate in
+laboratoarele anterioare (`unify()` si `substitute()`) pentru a aplica un set
+de fapte unor premise, astfel incat sa se obtina noi fapte.
 
 
 
