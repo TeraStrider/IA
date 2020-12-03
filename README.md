@@ -83,6 +83,25 @@ laboratoarele anterioare (`unify()` si `substitute()`) pentru a aplica un set
 de fapte unor premise, astfel incat sa se obtina noi fapte.
 
 
+### Laborator 8 - Graphplan
+In lab e implementat algoritmul *Graphplan* care creeaza o planificare de
+actiuni cu scopul de a ajunge la o anumita stare. Starile sunt definite ca o
+lista de predicate. Algoritmul se bazeaza pe 2 notiuni:
+
+#### Predicate mutex
+Sunt predicate care se contrazic (de ex.: `A` si `~A`). Aceste predicate nu pot
+face parte din aceeasi stare.
+
+#### Actiuni mutex
+Sunt actiuni care au cel putin unul dintre preconditii sau efecte in mutex.
+Aceste actiuni nu se pot executa simultan.
+
+Pe baza mutecsilor descrisi mai sus, se creeaza o lista de actiuni posibile, una
+de actiuni aflate in mutex (au oricare dintre premise sau efecte in relatie de
+mutex), alta de efecte ale actiunilor antementionate si inca una cu efectele
+aflate in mutex.
+
+
 
 ## Teme
 ### Tema 1 - Cautari informate in spatiul starilor
