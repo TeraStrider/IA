@@ -78,7 +78,7 @@ Se utilizeaza rezolutia pentru a demonstra propozitii.
 
 ### Laborator 7 - Forward Chaining
 Se demonstreaza o serie de teoreme (implicatii) folosind forward chaining.
-Teoremele sunt formulate in FNC si se folosesc functiile implementate in
+Teoremele sunt formulate in _FNC_ si se folosesc functiile implementate in
 laboratoarele anterioare (`unify()` si `substitute()`) pentru a aplica un set
 de fapte unor premise, astfel incat sa se obtina noi fapte.
 
@@ -100,6 +100,29 @@ Pe baza mutecsilor descrisi mai sus, se creeaza o lista de actiuni posibile, una
 de actiuni aflate in mutex (au oricare dintre premise sau efecte in relatie de
 mutex), alta de efecte ale actiunilor antementionate si inca una cu efectele
 aflate in mutex.
+
+
+### Laborator 9 - Seminar retele bayesiene
+Niste tractoare scarboase de rezolvat pe hartie. Calcule chioare de
+probabilitati si nimic mai mult. Nu merita sa ajunga pe Git...
+
+
+### Laborator 10 - Eliminarea variabilelor din retele bayesiene
+Se implementeaza reguli care reduc dimensiunea _factorilor_ (tabelelor de
+probabilitati) din nodurile unei retele bayesiene.
+
+#### Multiplicare
+Un join intre 2 factori prin care se inmultesc probabilitatile liniilor care fac
+match.
+
+#### Insumare
+Se elimina o variabila dintr-un factor adunand valorile intrarilor unde
+variabila respectiva are valori opuse (se poate ignora pentru ca se considera
+si cazul in care e adevarata si cel in care nu).
+
+#### Reducere conform cu observatiile
+Daca observam ca o variabila are o anumita valoare, putem elimina intrarile cu
+valoarea opusa din toti factorii in care apare variabila.
 
 
 

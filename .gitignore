@@ -131,3 +131,7 @@ dmypy.json
 
 # Other binaries
 *.zip
+
+
+# Seminars
+Laborator9/
