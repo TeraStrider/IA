@@ -1,5 +1,6 @@
 from copy import deepcopy
 from heapq import heappop, heappush
+from math import inf
 from typing import Callable, List, Tuple
 
 from levels import *
@@ -123,43 +124,84 @@ def _find_colours(state: List[List[str or int]]):
     return [elem[COLOR] for elem in state if elem[TYPE] == SQUARE]
 
 
-def _solve_bfs(
-    initial_state: List[List[str or int]]
-) -> Tuple[List[str], List[List[List[str or int]]], int]:
-    colours = _find_colours(initial_state)
-    num_explored = 0
-
-    q = [([], initial_state)]
-
-    while q:
-        num_explored += 1
-        cmds, crt_state = q.pop(0)
-
-        if iswin(crt_state):
-            break
-
-        for colour in colours:
-            q.append((cmds + [colour], press(colour, crt_state)))
-
-    explored = [initial_state]
-    for cmd in cmds:
-        initial_state = press(cmd, initial_state)
-        explored.append(initial_state)
-
-    return cmds, explored, num_explored
-
-
 def _get_squares(state: List[List[str or int]]) -> List[List[str or int]]:
     return [elem for elem in state if elem[TYPE] == SQUARE]
 
 
-def _get_goal_for_colour(
-    state: List[List[str or int]],
-    colour: str
-) -> Tuple[int, int]:
+def _get_goal_for_colour(state: List[List[str or int]], colour: str):
     for elem in state:
-        if elem[COLOR] == colour:
+        if elem[TYPE] == GOAL and elem[COLOR] == colour:
             return elem[X], elem[Y]
+
+    return None, None
+
+
+def _check_if(state, square, p):
+    return any(elem for elem in state
+        if (
+            p(elem) and
+            (
+                (elem[TYPE] == SQUARE and elem[COLOR] != square[COLOR])
+                or (elem[TYPE] == CHANGER and elem[DIR] != square[DIR])
+            )
+        )
+    )
+
+
+def _should_keep_state(state: List[List[str or int]]) -> bool:
+    for square in _get_squares(state):
+        x, y = _get_goal_for_colour(state, square[COLOR])
+        if x is not None and y is not None:
+            if square[DIR] == SOUTH and y > square[Y]:
+                if not _check_if(state, square, lambda el: el[Y] <= square[Y]):
+                    return False
+            if square[DIR] == NORTH and y < square[Y]:
+                if not _check_if(state, square, lambda el: el[Y] >= square[Y]):
+                    return False
+            if square[DIR] == EAST and x < square[X]:
+                if not _check_if(state, square, lambda el: el[X] >= square[X]):
+                    return False
+            if square[DIR] == WEST and x > square[X]:
+                if not _check_if(state, square, lambda el: el[X] <= square[X]):
+                    return False
+
+    return True
+
+
+def _should_keep_state2(state: List[List[str or int]], bbox: List[int]) -> bool:
+    for square in _get_squares(state):
+        if (
+            square[X] < bbox[0] or square[Y] < bbox[1]
+            or square[X] > bbox[2] or square[Y] > bbox[3]
+        ):
+            return False
+
+    return True
+
+
+def _get_bbox(state: List[List[str or int]]) -> List[int]:
+    bbox = [inf, inf, -inf, -inf]
+
+    for elem in state:
+        bbox[0] = min(bbox[0], elem[X])
+        bbox[1] = min(bbox[1], elem[Y])
+        bbox[2] = max(bbox[2], elem[X])
+        bbox[3] = max(bbox[3], elem[Y])
+
+    bbox[0] -= 1
+    bbox[1] -= 1
+    bbox[2] += 1
+    bbox[3] += 1
+
+    return bbox
+
+
+def hash(state: List[List[str or int]]) -> str:
+    squares = [(elem[X], elem[Y], elem[COLOR], elem[DIR])
+        for elem in state if elem[TYPE] == SQUARE]
+    squares.sort(key=lambda el: el[2])
+
+    return str(squares)
 
 
 def manhattan(state: List[List[str or int]]) -> int:
@@ -167,7 +209,8 @@ def manhattan(state: List[List[str or int]]) -> int:
 
     for square in _get_squares(state):
         x, y = _get_goal_for_colour(state, square[COLOR])
-        dist += abs(square[X] - x) + abs(square[Y] - y)
+        if x is not None and y is not None:
+            dist += abs(square[X] - x) + abs(square[Y] - y)
 
     return dist
 
@@ -178,29 +221,37 @@ def _solve_astar(
 ) -> Tuple[List[str], List[List[List[str or int]]], int]:
     frontier = []
     heappush(frontier, (0 + h(initial_state), initial_state))
-    discovered = {str(initial_state): (0, [])}
+
+    discovered = {hash(initial_state): (0, [])}
     colours = _find_colours(initial_state)
+
     num_explored = 1
+    bbox = _get_bbox(initial_state)
+    found = iswin(initial_state)
 
-
-    while frontier:
-        crt_state = list(heappop(frontier)[1])
-        crt_g, cmds = discovered[str(crt_state)]
-
-        if iswin(crt_state):
-            break
+    while not found and frontier:
+        crt_state = heappop(frontier)[1]
+        crt_g, cmds = discovered[hash(crt_state)]
 
         for colour in colours:
             next_g = crt_g + 1
             next_s = press(colour, crt_state)
 
-            next_s_str = str(next_s)
+            if iswin(next_s):
+                cmds.append(colour)
+                found = True
+                break
 
             if (
-                next_s_str not in discovered
-                or next_g < discovered[next_s_str][0]
+                not _should_keep_state(next_s)
+                or not _should_keep_state2(next_s, bbox)
             ):
-                discovered[next_s_str] = (next_g, cmds + [colour])
+                continue
+
+            next_s_h = hash(next_s)
+
+            if next_s_h not in discovered or next_g < discovered[next_s_h][0]:
+                discovered[next_s_h] = (next_g, cmds + [colour])
                 heappush(frontier, (next_g + h(next_s), next_s))
                 num_explored += 1
 
@@ -215,7 +266,6 @@ def _solve_astar(
 def solve(
     initial_state: List[List[str or int]]
 ) -> Tuple[List[str], List[List[List[str or int]]], int]:
-    # return _solve_bfs(initial_state)
     return _solve_astar(initial_state, manhattan)
 
 
@@ -225,6 +275,3 @@ def play(initstate: List[List[str or int]], plan: List[str], small: bool=False):
     for action in plan:
         state = press(action, state)
         print(p(state, small))
-
-
-# play(levels['level10'], [RED, RED, RED, DARK, DARK, BLUE, BLUE, BLUE])
