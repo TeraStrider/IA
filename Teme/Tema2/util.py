@@ -191,4 +191,3 @@ def state_eq(state1, state2) -> bool:
                 return False
 
         return True
-

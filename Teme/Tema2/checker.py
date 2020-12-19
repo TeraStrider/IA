@@ -461,10 +461,10 @@ def check_apply_ops(apply_op_func: Callable[[str, List[List[str or int]]], List[
         if test:
             if test == test_name: test = None
             else: continue
-            
+
         if isinstance(test_name, int): test_name = "Test ops " + str(test_name)
         state = test_case["start_state"]
-        print(">>> ", test_name, end = "") 
+        print(">>> ", test_name, end = "")
         if verbose: print(":",  ", ".join(test_case["ops"])); prints(p(state, S), " -> ", p(test_case["end_state"], S))
         print("... ", end="", flush=True)
         for op in test_case["ops"]:
@@ -528,10 +528,10 @@ def check_plans(verbose: bool = False, test: str = None, single: bool = False):
         if test:
             if test == level: test = None
             else: continue
-        
+
         print(">>> Checking plan for level", level, "... ", end="", flush = True)
         initial_state = levels[level]
-        
+
         try:
             plan, states, nr_discovered = solve(initial_state)
         except:
@@ -539,7 +539,7 @@ def check_plans(verbose: bool = False, test: str = None, single: bool = False):
             traceback.print_exc()
             print("----------------")
             continue
-            
+
         if verbose:
             limit = 80
             print(" got plan:", )
@@ -580,7 +580,7 @@ def check_plans(verbose: bool = False, test: str = None, single: bool = False):
 
     print("Passed %i out of %i levels." % (ct, len(levels)))
     return ct, inbounds, inbounds_ext, len(levels), overs
-    
+
 
 if __name__ == "__main__":
     arg_parser = ArgumentParser()
@@ -636,6 +636,3 @@ if __name__ == "__main__":
         check_apply_ops(verbose = verbose)
     elif args.test_type == "plan":
         check_plans(verbose = verbose)
-
-
-
