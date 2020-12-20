@@ -1,6 +1,6 @@
 from copy import deepcopy
 from heapq import heappop, heappush
-from math import inf
+from math import inf, sqrt
 from typing import Callable, List, Tuple
 
 from levels import *
@@ -11,6 +11,12 @@ from util import check_state, state_eq, p, prints, iswin
 ################ TODOs ################
 #######################################
 """
+
+
+MINX = 0
+MINY = 1
+MAXX = 2
+MAXY = 3
 
 
 def pos(square: List[str or int], x: int, y: int) -> bool:
@@ -136,7 +142,11 @@ def _get_goal_for_colour(state: List[List[str or int]], colour: str):
     return None, None
 
 
-def _check_if(state, square, p):
+def _check_halfplane(
+    state: List[List[str or int]],
+    square: List[str or int],
+    p: Callable[[List[str or int]], int]
+) -> bool:
     return any(elem for elem in state
         if (
             p(elem) and
@@ -148,27 +158,30 @@ def _check_if(state, square, p):
     )
 
 
-def _should_keep_state(state: List[List[str or int]]) -> bool:
-    for square in _get_squares(state):
-        x, y = _get_goal_for_colour(state, square[COLOR])
+def _is_halfplane_consistent(state: List[List[str or int]]) -> bool:
+    for sq in _get_squares(state):
+        x, y = _get_goal_for_colour(state, sq[COLOR])
         if x is not None and y is not None:
-            if square[DIR] == SOUTH and y > square[Y]:
-                if not _check_if(state, square, lambda el: el[Y] <= square[Y]):
+            if sq[DIR] == SOUTH and y > sq[Y]:
+                if not _check_halfplane(state, sq, lambda el: el[Y] <= sq[Y]):
                     return False
-            if square[DIR] == NORTH and y < square[Y]:
-                if not _check_if(state, square, lambda el: el[Y] >= square[Y]):
+            if sq[DIR] == NORTH and y < sq[Y]:
+                if not _check_halfplane(state, sq, lambda el: el[Y] >= sq[Y]):
                     return False
-            if square[DIR] == EAST and x < square[X]:
-                if not _check_if(state, square, lambda el: el[X] >= square[X]):
+            if sq[DIR] == EAST and x < sq[X]:
+                if not _check_halfplane(state, sq, lambda el: el[X] >= sq[X]):
                     return False
-            if square[DIR] == WEST and x > square[X]:
-                if not _check_if(state, square, lambda el: el[X] <= square[X]):
+            if sq[DIR] == WEST and x > sq[X]:
+                if not _check_halfplane(state, sq, lambda el: el[X] <= sq[X]):
                     return False
 
     return True
 
 
-def _should_keep_state2(state: List[List[str or int]], bbox: List[int]) -> bool:
+def _squares_within_bbox(
+    state: List[List[str or int]],
+    bbox: List[int]
+) -> bool:
     for square in _get_squares(state):
         if (
             square[X] < bbox[0] or square[Y] < bbox[1]
@@ -183,15 +196,13 @@ def _get_bbox(state: List[List[str or int]]) -> List[int]:
     bbox = [inf, inf, -inf, -inf]
 
     for elem in state:
-        bbox[0] = min(bbox[0], elem[X])
-        bbox[1] = min(bbox[1], elem[Y])
-        bbox[2] = max(bbox[2], elem[X])
-        bbox[3] = max(bbox[3], elem[Y])
+        bbox[MINX] = min(bbox[MINX], elem[X])
+        bbox[MINY] = min(bbox[MINY], elem[Y])
+        bbox[MAXX] = max(bbox[MAXX], elem[X])
+        bbox[MAXY] = max(bbox[MAXY], elem[Y])
 
-    bbox[0] -= 1
-    bbox[1] -= 1
-    bbox[2] += 1
-    bbox[3] += 1
+    bbox[MINX] -= 1
+    bbox[MINY] -= 1
 
     return bbox
 
@@ -204,25 +215,25 @@ def hash(state: List[List[str or int]]) -> str:
     return str(squares)
 
 
-def manhattan(state: List[List[str or int]]) -> int:
-    dist = 0
+def euclid(state: List[List[str or int]]) -> int:
+    dist_euclid = 0
 
     for square in _get_squares(state):
         x, y = _get_goal_for_colour(state, square[COLOR])
         if x is not None and y is not None:
-            dist += abs(square[X] - x) + abs(square[Y] - y)
+            dist_euclid += sqrt((square[X] - x)**2 + (square[Y] - y)**2)
 
-    return dist
+    return int(dist_euclid)
 
 
-def _solve_astar(
+def _solve_bf(
     initial_state: List[List[str or int]],
-    h
+    h: Callable[[List[List[str or int]]], int]
 ) -> Tuple[List[str], List[List[List[str or int]]], int]:
     frontier = []
     heappush(frontier, (0 + h(initial_state), initial_state))
 
-    discovered = {hash(initial_state): (0, [])}
+    discovered = {hash(initial_state): []}
     colours = _find_colours(initial_state)
 
     num_explored = 1
@@ -231,28 +242,23 @@ def _solve_astar(
 
     while not found and frontier:
         crt_state = heappop(frontier)[1]
-        crt_g, cmds = discovered[hash(crt_state)]
+        cmds = discovered[hash(crt_state)]
+
+        if iswin(crt_state):
+            break
 
         for colour in colours:
-            next_g = crt_g + 1
             next_s = press(colour, crt_state)
-
-            if iswin(next_s):
-                cmds.append(colour)
-                found = True
-                break
-
             if (
-                not _should_keep_state(next_s)
-                or not _should_keep_state2(next_s, bbox)
+                not _is_halfplane_consistent(next_s)
+                or not _squares_within_bbox(next_s, bbox)
             ):
                 continue
 
             next_s_h = hash(next_s)
-
-            if next_s_h not in discovered or next_g < discovered[next_s_h][0]:
-                discovered[next_s_h] = (next_g, cmds + [colour])
-                heappush(frontier, (next_g + h(next_s), next_s))
+            if next_s_h not in discovered:
+                discovered[next_s_h] = cmds + [colour]
+                heappush(frontier, (h(next_s), next_s))
                 num_explored += 1
 
     explored = [initial_state]
@@ -266,7 +272,7 @@ def _solve_astar(
 def solve(
     initial_state: List[List[str or int]]
 ) -> Tuple[List[str], List[List[List[str or int]]], int]:
-    return _solve_astar(initial_state, manhattan)
+    return _solve_bf(initial_state, euclid)
 
 
 def play(initstate: List[List[str or int]], plan: List[str], small: bool=False):
