@@ -19,58 +19,10 @@ MAXX = 2
 MAXY = 3
 
 
-def pos(square: List[str or int], x: int, y: int) -> bool:
-    return square[X] == x and square[Y] == y and square[TYPE] == SQUARE
-
-
-def dir(square: List[str or int], direction: str) -> bool:
-    return square[TYPE] == SQUARE and square[DIR] == direction
-
-
-def delta(direction: str, x: int, y: int, x1: int, y1: int) -> bool:
-    return (
-        x == x1 and y == y1 - 1 and direction == EAST
-        or x == x1 + 1 and y == y1 and direction == NORTH
-        or x == x1 and y == y1 + 1 and direction == WEST
-        or x == x1 -1 and y == y1 and direction == SOUTH
-    )
-
-
-def empty(state: List[List[str or int]], x: int, y: int) -> bool:
-    return not any(map(lambda l: pos(l, x, y), state))
-
-
-def changer(
-    state: List[List[str or int]],
-    x: int,
-    y: int,
-    direction: str
-) -> bool:
-    return any(map(
-        lambda l:
-            l[X] == x
-            and l[Y] == y
-            and l[TYPE] == CHANGER
-            and l[DIR] == direction,
-        state
-    ))
-
-
-def no_changer(state: List[List[str or int]], x: int, y: int) -> bool:
-    return not any(map(
-        lambda l: l[X] == x and l[Y] == y and l[TYPE] == CHANGER,
-        state
-    ))
-
-
-def between(down: int, x: int, up: int) -> bool:
-    return down <= x and x <= up
-
-
-def _get_colour_pos(state: List[List[str or int]], colour: str) -> Tuple[int, int]:
+def _get_square(state: List[List[str or int]], colour: str) -> List[str or int]:
     for elem in state:
         if elem[TYPE] == SQUARE and elem[COLOR] == colour:
-            return elem[X], elem[Y]
+            return elem
 
 
 def _get_elems_by_pos(
@@ -86,17 +38,15 @@ def _get_type(state: List[List[str or int]], pos: Tuple[int, int], type: str):
             return elem
 
 
-def _move_square(
+def move_square(
     state: List[List[str or int]],
-    pos: Tuple[int, int],
+    x: int,
+    y: int,
     direction: str
 ) -> List[List[str or int]]:
-    square = _get_type(state, pos, SQUARE)
+    square = _get_type(state, (x, y), SQUARE)
     if square is None:
         return state
-
-    if direction is None:
-        direction = square[DIR]
 
     if direction == EAST:
         new_x, new_y = square[X] + 1, square[Y]
@@ -108,7 +58,7 @@ def _move_square(
         new_x, new_y = square[X], square[Y] - 1
 
     state.remove(square)
-    state = _move_square(state, (new_x, new_y), direction)
+    state = move_square(state, new_x, new_y, direction)
 
     square[X] = new_x
     square[Y] = new_y
@@ -123,7 +73,8 @@ def _move_square(
 
 
 def press(color: str, state: List[List[str or int]]) -> List[List[str or int]]:
-    return _move_square(deepcopy(state), _get_colour_pos(state, color), None)
+    square = _get_square(state, color)
+    return move_square(deepcopy(state), square[X], square[Y], square[DIR])
 
 
 def _find_colours(state: List[List[str or int]]):
@@ -273,11 +224,3 @@ def solve(
     initial_state: List[List[str or int]]
 ) -> Tuple[List[str], List[List[List[str or int]]], int]:
     return _solve_bf(initial_state, euclid)
-
-
-def play(initstate: List[List[str or int]], plan: List[str], small: bool=False):
-    state = initstate
-    print(p(state, small))
-    for action in plan:
-        state = press(action, state)
-        print(p(state, small))
