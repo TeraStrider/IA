@@ -4,7 +4,7 @@ from math import inf, sqrt
 from typing import Callable, List, Tuple
 
 from levels import *
-from util import check_state, state_eq, p, prints, iswin
+from util import check_state, delta, state_eq, p, prints, iswin
 
 """
 #######################################
@@ -25,60 +25,145 @@ def _get_square(state: List[List[str or int]], colour: str) -> List[str or int]:
             return elem
 
 
-def _get_elems_by_pos(
-    state: List[List[str or int]],
-    pos: Tuple[int, int]
-) -> List[List[str or int]]:
-    return [elem for elem in state if elem[X] == pos[X] and elem[Y] == pos[Y]]
-
-
 def _get_type(state: List[List[str or int]], pos: Tuple[int, int], type: str):
     for elem in state:
         if elem[TYPE] == type and elem[X] == pos[X] and elem[Y] == pos[Y]:
             return elem
 
 
-def move_square(
+def between_dir(
+    direction: str,
+    x1: int, y1: int,
+    x2: int, y2: int,
+    x3: int, y3: int
+):
+    return (
+        (y2 == y3 and y1 == y2
+        and (
+            (direction == EAST and x1 < x2 and x2 < x3)
+            or (direction == WEST and x1 > x2 and x2 > x3)
+        ))
+        or (
+            (x2 == x3 and x1 == x2
+            and (
+                (direction == NORTH and y1 < y2 and y2 < y3)
+                or (direction == SOUTH and y1 > y2 and y2 > y3)
+            ))
+        )
+    )
+
+
+def _check_continuous_squares(
+    start_sq: List[str or int],
+    sq: List[str or int],
+    squares: List[List[str or int]],
+    direction: str
+) -> bool:
+    rev = False
+
+    if direction == EAST or direction == WEST:
+        sq_line = list(filter(lambda s: s[Y] == sq[Y], squares))
+        pos = X
+
+        if direction == EAST:
+            sq_line.sort(key=lambda s: s[X])
+        else:
+            rev = True
+            sq_line.sort(key=lambda s: s[X], reverse=True)
+
+    else:
+        sq_line = list(filter(lambda s: s[X] == sq[X], squares))
+        pos = Y
+
+        if direction == NORTH:
+            sq_line.sort(key=lambda s: s[Y])
+        else:
+            rev = True
+            sq_line.sort(key=lambda s: s[Y], reverse=True)
+
+    if start_sq not in sq_line:
+        return False
+
+    start = sq_line.index(start_sq)
+    end = sq_line.index(sq)
+    if start > end:
+        return False
+
+    for i in range(start, end):
+        if rev and sq_line[i][pos] != sq_line[i + 1][pos] + 1:
+            return False
+        if not rev and sq_line[i][pos] != sq_line[i + 1][pos] - 1:
+            return False
+
+    return True
+
+
+def move_square(state: List[List[str or int]], square: List[str or int]):
+    all_squares = _get_squares(state)
+    for sq in all_squares:
+        if (sq[COLOR] == square[COLOR]
+            or not _check_continuous_squares(
+                square,
+                sq,
+                all_squares,
+                square[DIR]
+            )
+        ):
+            continue
+
+        state.remove(sq)
+
+        new_x, new_y = delta(sq[X], sq[Y], square[DIR])
+        changer = _get_type(state, (new_x, new_y), CHANGER)
+        if changer:
+            sq[DIR] = changer[DIR]
+
+        state.append([new_x, new_y, sq[TYPE], sq[COLOR], sq[DIR]])
+
+    state.remove(square)
+
+    new_x, new_y = delta(square[X], square[Y], square[DIR])
+    changer = _get_type(state, (new_x, new_y), CHANGER)
+    if changer:
+        square[DIR] = changer[DIR]
+
+    state.append([new_x, new_y, square[TYPE], square[COLOR], square[DIR]])
+
+    return state
+
+
+def move_square_rec(
     state: List[List[str or int]],
     x: int,
     y: int,
     direction: str
 ) -> List[List[str or int]]:
+    """
+    Implementare recursiva a lui move_square. E pusa aici doar ca sa se vada cat
+    de frumos se poate face urmand o logica naturala in comparatie cu
+    implementarea fortata de mai sus.
+    """
     square = _get_type(state, (x, y), SQUARE)
     if square is None:
         return state
 
-    if direction == EAST:
-        new_x, new_y = square[X] + 1, square[Y]
-    elif direction == NORTH:
-        new_x, new_y = square[X], square[Y] + 1
-    elif direction == WEST:
-        new_x, new_y = square[X] - 1, square[Y]
-    else:
-        new_x, new_y = square[X], square[Y] - 1
-
     state.remove(square)
-    state = move_square(state, new_x, new_y, direction)
-
-    square[X] = new_x
-    square[Y] = new_y
+    new_x, new_y = delta(square[X], square[Y], direction)
+    state = move_square_rec(state, new_x, new_y, direction)
 
     changer = _get_type(state, (new_x, new_y), CHANGER)
     if changer:
         square[DIR] = changer[DIR]
 
-    state.append(square)
+    state.append([new_x, new_y, square[TYPE], square[COLOR], square[DIR]])
 
     return state
 
 
 def press(color: str, state: List[List[str or int]]) -> List[List[str or int]]:
     square = _get_square(state, color)
-    return move_square(deepcopy(state), square[X], square[Y], square[DIR])
-
-
-def _find_colours(state: List[List[str or int]]):
-    return [elem[COLOR] for elem in state if elem[TYPE] == SQUARE]
+    # return move_square_rec(deepcopy(state), square[X], square[Y], square[DIR])
+    return move_square(deepcopy(state), deepcopy(square))
 
 
 def _get_squares(state: List[List[str or int]]) -> List[List[str or int]]:
@@ -177,21 +262,17 @@ def euclid(state: List[List[str or int]]) -> int:
     return int(dist_euclid)
 
 
-def _solve_bf(
-    initial_state: List[List[str or int]],
-    h: Callable[[List[List[str or int]]], int]
+def solve(
+    initial_state: List[List[str or int]]
 ) -> Tuple[List[str], List[List[List[str or int]]], int]:
-    frontier = []
-    heappush(frontier, (0 + h(initial_state), initial_state))
-
+    frontier = [(euclid(initial_state), initial_state)]
     discovered = {hash(initial_state): []}
-    colours = _find_colours(initial_state)
+    colours = [elem[COLOR] for elem in initial_state if elem[TYPE] == SQUARE]
 
     num_explored = 1
     bbox = _get_bbox(initial_state)
-    found = iswin(initial_state)
 
-    while not found and frontier:
+    while frontier:
         crt_state = heappop(frontier)[1]
         cmds = discovered[hash(crt_state)]
 
@@ -209,7 +290,7 @@ def _solve_bf(
             next_s_h = hash(next_s)
             if next_s_h not in discovered:
                 discovered[next_s_h] = cmds + [colour]
-                heappush(frontier, (h(next_s), next_s))
+                heappush(frontier, (euclid(next_s), next_s))
                 num_explored += 1
 
     explored = [initial_state]
@@ -218,9 +299,3 @@ def _solve_bf(
         explored.append(initial_state)
 
     return cmds, explored, num_explored
-
-
-def solve(
-    initial_state: List[List[str or int]]
-) -> Tuple[List[str], List[List[List[str or int]]], int]:
-    return _solve_bf(initial_state, euclid)
