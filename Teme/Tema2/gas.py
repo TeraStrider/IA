@@ -238,6 +238,7 @@ def _get_bbox(state: List[List[str or int]]) -> List[int]:
         bbox[MAXY] = max(bbox[MAXY], elem[Y])
 
     bbox[MINY] -= 1
+    bbox[MAXY] += 1
 
     return bbox
 
