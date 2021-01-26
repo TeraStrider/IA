@@ -133,3 +133,16 @@ Se implementeaza si se compara performantele algoritmilor `DFID`, `IDA*`,
 afieseaza caile gasite de agent de la starea initiala pana la cea finala,
 costurile gasite de acesta pentru fiecare stare explorata, precum si timpii si
 memoria utilizata in cadrul fiecarui algoritm.
+
+### Tema 2 - Game about Squares
+Se implementeaza un algoritm de rezolvare a nivelurilor din jocul "Game about
+Squares". Se foloseste algoritmul Best First ce foloseste euristica euclidiana,
+impreuna cu doua strategii de eliminare a starilor ce nu pot duce la o stare
+castigatoare.
+
+### Tema 3 - Clasificarea si rezumarea articolelor de stiri
+Se foloseste algoritmul Naive Bayes pentru a clasifica articole de stiri dupa
+domeniul acestora. Acelasi algoritm este folosit si pentru rezumarea acestor
+articole. Rezumatele sunt create de catre model selectand unele propozitii din
+articolul initial. Se antreneaza si se compara rezultatele obtinute atat cu
+monograme cat si cu bigrame.
